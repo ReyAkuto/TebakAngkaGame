@@ -389,9 +389,9 @@ button:disabled { opacity: 0.3; cursor: not-allowed; }
   <div class="g-bottom">
 
     <div id="secretPanel">
-      <div class="panel-hint"> Pilih angka rahasia kamu (1–50)<br>Lawan tidak akan tahu!</div>
+      <div class="panel-hint"> Pilih angka rahasia kamu (1–1000)<br>Lawan tidak akan tahu!</div>
       <div class="secret-row">
-        <input type="number" id="secretInput" placeholder="1–50" min="1" max="50">
+        <input type="number" id="secretInput" placeholder="1–1000" min="1" max="1000">
         <button class="btn-green" id="setSecretBtn" onclick="setSecret()">Kunci OK</button>
       </div>
       <p class="status-small" id="secretStatus"></p>
@@ -400,7 +400,7 @@ button:disabled { opacity: 0.3; cursor: not-allowed; }
     <div id="guessPanel">
       <div class="panel-hint" id="turnHint">Giliranmu! Tebak angka lawan </div>
       <div class="guess-row">
-        <input type="number" id="guessInput" placeholder="?" min="1" max="50">
+        <input type="number" id="guessInput" placeholder="?" min="1" max="1000">
         <button class="btn-red" id="guessBtn" onclick="guessNumber()" disabled>Tebak </button>
       </div>
     </div>
@@ -534,7 +534,7 @@ window.joinRoom = async function () {
 /* ── SET SECRET ── */
 window.setSecret = async function () {
   const val = parseInt(el("secretInput").value);
-  if (!val || val < 1 || val > 50) { alert("Angka harus antara 1–50!"); return; }
+  if (!val || val < 1 || val > 1000) { alert("Angka harus antara 1–1000!"); return; }
 
   secretLocked = true;
 
@@ -561,7 +561,7 @@ window.guessNumber = async function () {
   if (gameOver) return;
 
   const guess = parseInt(el("guessInput").value);
-  if (!guess || guess < 1 || guess > 50) { alert("Angka harus antara 1–50!"); return; }
+  if (!guess || guess < 1 || guess > 1000) { alert("Angka harus antara 1–1000!"); return; }
 
   const snap = await get(ref(db, `rooms/${room}`));
   const data = snap.val();
@@ -857,5 +857,6 @@ console.log(" Game loaded!");
 </script>
 </body>
 </html>
+
 
 
