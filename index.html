@@ -1,0 +1,705 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<title>Tebak Angka</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Color+Emoji&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:       #0d0d1a;
+  --card:     #14142a;
+  --card2:    #1a1a30;
+  --border:   #2a2a4a;
+  --accent:   #e94560;
+  --blue:     #4a9eff;
+  --green:    #2ecc71;
+  --yellow:   #f1c40f;
+  --purple:   #9b59b6;
+  --text:     #e0e0f0;
+  --muted:    #6b6b8a;
+  --mybubble: #0d2a4a;
+  --theirbubble: #2a0d2a;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'Segoe UI', system-ui, Arial, sans-serif, 'Noto Color Emoji';
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* ── LANDING ── */
+#landing {
+  width: 100%;
+  max-width: 400px;
+  padding: 32px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.logo { text-align: center; margin-bottom: 10px; }
+.logo h1 {
+  font-size: 30px;
+  background: linear-gradient(135deg, var(--accent), var(--blue));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.logo p { font-size: 13px; color: var(--muted); margin-top: 4px; }
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 18px;
+}
+.card-title {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  color: var(--muted);
+  margin-bottom: 12px;
+}
+
+input {
+  width: 100%;
+  padding: 11px 14px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--text);
+  font-size: 15px;
+  margin-bottom: 10px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+input:focus { border-color: var(--blue); }
+input:disabled { opacity: 0.4; cursor: not-allowed; }
+input[type=number]::-webkit-inner-spin-button,
+input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; }
+
+button {
+  width: 100%;
+  padding: 12px;
+  border: none;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: filter 0.2s, transform 0.1s;
+}
+button:active:not(:disabled) { transform: scale(0.98); }
+button:hover:not(:disabled)  { filter: brightness(1.15); }
+button:disabled { opacity: 0.3; cursor: not-allowed; }
+.btn-red    { background: var(--accent); color: #fff; }
+.btn-blue   { background: var(--blue);   color: #fff; }
+.btn-green  { background: var(--green);  color: #fff; }
+
+.status-small {
+  font-size: 13px;
+  color: var(--muted);
+  text-align: center;
+  min-height: 18px;
+  padding: 4px 0;
+}
+
+/* ── GAME AREA ── */
+#gameArea {
+  display: none;
+  width: 100%;
+  max-width: 480px;
+  height: 100vh;
+  flex-direction: column;
+}
+
+.g-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  background: var(--card2);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.g-header-title {
+  font-size: 14px;
+  font-weight: 700;
+  background: linear-gradient(135deg, var(--accent), var(--blue));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.room-badge {
+  font-size: 12px;
+  background: var(--border);
+  border-radius: 8px;
+  padding: 4px 10px;
+  color: var(--yellow);
+  font-weight: 700;
+  letter-spacing: 2px;
+}
+
+/* Players bar */
+.players-bar {
+  display: flex;
+  gap: 8px;
+  padding: 10px 14px;
+  background: var(--card);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.pchip {
+  flex: 1;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 8px 10px;
+  text-align: center;
+  transition: border-color 0.3s, box-shadow 0.3s;
+  min-width: 0;
+}
+.pchip.active-turn { border-color: var(--green); box-shadow: 0 0 10px rgba(46,204,113,0.3); }
+.pchip.me-chip   { border-color: var(--blue); }
+.pchip.them-chip { border-color: var(--accent); }
+.pchip-label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 2px; }
+.pchip-name  { font-weight: 700; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.me-chip   .pchip-name { color: var(--blue); }
+.them-chip .pchip-name { color: var(--accent); }
+.pchip-status { font-size: 11px; margin-top: 3px; min-height: 14px; color: var(--muted); }
+.pchip-status.go { color: var(--green); }
+.vs-icon { display: flex; align-items: center; font-size: 16px; color: var(--muted); padding: 0 2px; }
+
+/* Status bar */
+.g-status-bar {
+  padding: 7px 14px;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  font-size: 12px;
+  text-align: center;
+  color: var(--muted);
+  flex-shrink: 0;
+  min-height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Log */
+#logArea {
+  flex: 1;
+  overflow-y: auto;
+  padding: 14px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+#logArea::-webkit-scrollbar { width: 3px; }
+#logArea::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+.log-system {
+  align-self: center;
+  background: var(--card2);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 5px 14px;
+  font-size: 12px;
+  color: var(--muted);
+  text-align: center;
+  max-width: 90%;
+}
+
+.log-entry {
+  display: flex;
+  flex-direction: column;
+  max-width: 78%;
+  animation: popIn 0.25s ease;
+}
+@keyframes popIn {
+  from { opacity: 0; transform: translateY(6px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+.log-entry.mine   { align-self: flex-end;   align-items: flex-end; }
+.log-entry.theirs { align-self: flex-start; align-items: flex-start; }
+
+.log-name { font-size: 11px; color: var(--muted); margin-bottom: 3px; padding: 0 4px; }
+
+.log-bubble { border-radius: 16px; padding: 10px 14px; }
+.mine   .log-bubble { background: var(--mybubble);    border-bottom-right-radius: 4px; border: 1px solid #1a3a6a; }
+.theirs .log-bubble { background: var(--theirbubble); border-bottom-left-radius: 4px;  border: 1px solid #3a1a3a; }
+
+.log-guess-label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.8px; }
+.log-guess-num   { font-size: 26px; font-weight: 900; letter-spacing: -0.5px; }
+.mine   .log-guess-num { color: var(--blue); }
+.theirs .log-guess-num { color: var(--accent); }
+
+.log-hint { font-size: 13px; margin-top: 5px; font-weight: 600; }
+.h-higher  { color: #ff7675; }
+.h-lower   { color: #74b9ff; }
+.h-correct { color: var(--green); }
+
+.log-time { font-size: 10px; color: var(--muted); margin-top: 3px; padding: 0 5px; }
+
+/* Bottom */
+.g-bottom {
+  background: var(--card2);
+  border-top: 1px solid var(--border);
+  padding: 14px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.panel-hint { font-size: 12px; color: var(--muted); margin-bottom: 8px; text-align: center; }
+
+.secret-row { display: flex; gap: 8px; }
+.secret-row input  { margin: 0; flex: 1; font-size: 20px; font-weight: 700; text-align: center; }
+.secret-row button { width: auto; padding: 12px 20px; flex-shrink: 0; }
+
+#guessPanel { display: none; flex-direction: column; gap: 8px; }
+.guess-row { display: flex; gap: 8px; }
+.guess-row input  { margin: 0; flex: 1; font-size: 26px; font-weight: 900; text-align: center; }
+.guess-row button { width: auto; padding: 12px 20px; flex-shrink: 0; }
+
+#resultPanel { display: none; }
+
+.result-win {
+  background: linear-gradient(135deg, #0d2e1a, #0a1f0a);
+  border: 1px solid var(--green);
+  border-radius: 14px;
+  padding: 18px;
+  text-align: center;
+}
+.result-win .result-emoji { font-size: 36px; }
+.result-win .result-title { font-size: 20px; font-weight: 900; color: var(--green); margin: 6px 0; }
+.result-win .result-sub   { font-size: 13px; color: #88cc99; }
+
+.result-lose {
+  background: linear-gradient(135deg, #2e0d1a, #1f0a10);
+  border: 1px solid var(--accent);
+  border-radius: 14px;
+  padding: 18px;
+  text-align: center;
+}
+.result-lose .result-emoji { font-size: 36px; }
+.result-lose .result-title { font-size: 18px; font-weight: 700; color: var(--accent); margin: 6px 0; }
+.result-lose .result-sub   { font-size: 13px; color: #cc8899; }
+</style>
+</head>
+<body>
+
+<!-- LANDING -->
+<div id="landing">
+  <div class="logo">
+    <h1>Tebak Angka</h1>
+    <p>Tebak angka rahasia lawanmu!</p>
+  </div>
+
+  <div class="card">
+    <div class="card-title"> Nama kamu</div>
+    <input id="name" placeholder="Masukkan namamu..." maxlength="18">
+  </div>
+
+  <div class="card">
+    <div class="card-title"> Buat room baru</div>
+    <button class="btn-red" onclick="createRoom()">Create Room</button>
+  </div>
+
+  <div class="card">
+    <div class="card-title"> Gabung room</div>
+    <input id="roomCodeInput" placeholder="Room code (4 digit)..." maxlength="4">
+    <button class="btn-blue" onclick="joinRoom()">Join Room</button>
+  </div>
+
+  <p class="status-small" id="landingStatus"></p>
+</div>
+
+<!-- GAME AREA -->
+<div id="gameArea">
+
+  <div class="g-header">
+    <div class="g-header-title">Tebak Angka</div>
+    <div class="room-badge" id="roomCodeDisplay">----</div>
+  </div>
+
+  <div class="players-bar">
+    <div class="pchip me-chip" id="myChip">
+      <div class="pchip-label">KAMU</div>
+      <div class="pchip-name" id="myChipName">-</div>
+      <div class="pchip-status" id="myChipStatus"></div>
+    </div>
+    <div class="vs-icon">VS</div>
+    <div class="pchip them-chip" id="theirChip">
+      <div class="pchip-label">LAWAN</div>
+      <div class="pchip-name" id="theirChipName">Menunggu...</div>
+      <div class="pchip-status" id="theirChipStatus"></div>
+    </div>
+  </div>
+
+  <div class="g-status-bar" id="gameStatusBar"> Menunggu lawan bergabung...</div>
+
+  <div id="logArea">
+    <div class="log-system">Selamat datang! Set angka rahasiamu dulu </div>
+  </div>
+
+  <div class="g-bottom">
+
+    <div id="secretPanel">
+      <div class="panel-hint"> Pilih angka rahasia kamu (1–50)<br>Lawan tidak akan tahu!</div>
+      <div class="secret-row">
+        <input type="number" id="secretInput" placeholder="1–50" min="1" max="50">
+        <button class="btn-green" id="setSecretBtn" onclick="setSecret()">Kunci OK</button>
+      </div>
+      <p class="status-small" id="secretStatus"></p>
+    </div>
+
+    <div id="guessPanel">
+      <div class="panel-hint" id="turnHint">Giliranmu! Tebak angka lawan </div>
+      <div class="guess-row">
+        <input type="number" id="guessInput" placeholder="?" min="1" max="50">
+        <button class="btn-red" id="guessBtn" onclick="guessNumber()" disabled>Tebak </button>
+      </div>
+    </div>
+
+    <div id="resultPanel"></div>
+
+  </div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.9.0/firebase-app.js";
+import { getDatabase, ref, set, update, onValue, get, push }
+  from "https://www.gstatic.com/firebasejs/12.9.0/firebase-database.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyC51VmMy0zQXX6kfsj-OKZRD8Md9B6SRgA",
+  authDomain: "my-ayang-game-project.firebaseapp.com",
+  databaseURL: "https://my-ayang-game-project-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "my-ayang-game-project",
+  storageBucket: "my-ayang-game-project.firebasestorage.app",
+  messagingSenderId: "854854685816",
+  appId: "1:854854685816:web:bfbb74aaaa10b55f3b898d"
+};
+const app = initializeApp(firebaseConfig);
+const db  = getDatabase(app);
+
+/* ── STATE ── */
+let room         = "";
+let role         = "";
+let myName       = "";
+let secretLocked = false;
+let gameOver     = false;
+let roomListener = null;
+let renderedKeys = new Set();
+
+/* ── HELPERS ── */
+const el  = id => document.getElementById(id);
+const txt = (id, v) => { el(id).textContent = v; };
+
+function fmtTime(ts) {
+  if (!ts) return "";
+  const d = new Date(ts);
+  return String(d.getHours()).padStart(2,"0") + ":" + String(d.getMinutes()).padStart(2,"0");
+}
+
+function showGame() {
+  el("landing").style.display  = "none";
+  el("gameArea").style.display = "flex";
+}
+
+async function pushLog(entry) {
+  await push(ref(db, `rooms/${room}/log`), { ...entry, ts: Date.now() });
+}
+
+/* ── CREATE ROOM ── */
+window.createRoom = async function () {
+  myName = el("name").value.trim();
+  if (!myName) { alert("Masukkan nama dulu!"); return; }
+
+  room     = Math.floor(1000 + Math.random() * 9000).toString();
+  role     = "player1";
+  gameOver = false;
+
+  await set(ref(db, `rooms/${room}`), {
+    players:    { player1: myName, player2: "" },
+    ready:      { player1: false, player2: false },
+    secrets:    { player1: 0, player2: 0 },
+    guessCount: { player1: 0, player2: 0 },
+    turn:       "player1",
+    winner:     "",
+    gameState:  "waiting",
+    log:        {}
+  });
+
+  txt("roomCodeDisplay", room);
+  txt("myChipName",      myName);
+  showGame();
+  listenRoom();
+};
+
+/* ── JOIN ROOM ── */
+window.joinRoom = async function () {
+  myName = el("name").value.trim();
+  const code = el("roomCodeInput").value.trim();
+  if (!myName || !code) { alert("Isi nama dan room code!"); return; }
+
+  let snap;
+  try { snap = await get(ref(db, `rooms/${code}`)); }
+  catch(e) { txt("landingStatus", "[!] Gagal konek ke server"); return; }
+
+  if (!snap.exists())               { txt("landingStatus", "[!] Room tidak ditemukan"); return; }
+  const data = snap.val();
+  if (data.players.player2)         { txt("landingStatus", "[!] Room penuh "); return; }
+  if (data.gameState === "finished"){ txt("landingStatus", "[!] Game sudah selesai"); return; }
+
+  room     = code;
+  role     = "player2";
+  gameOver = false;
+
+  await update(ref(db, `rooms/${room}`), {
+    "players/player2": myName,
+    gameState: "setting"
+  });
+
+  await pushLog({ type: "system", msg: ` ${myName} bergabung ke room!` });
+
+  txt("roomCodeDisplay", room);
+  txt("myChipName",      myName);
+  txt("theirChipName",   data.players.player1);
+  showGame();
+  listenRoom();
+};
+
+/* ── SET SECRET ── */
+window.setSecret = async function () {
+  const val = parseInt(el("secretInput").value);
+  if (!val || val < 1 || val > 50) { alert("Angka harus antara 1–50!"); return; }
+
+  secretLocked = true;
+
+  await update(ref(db, `rooms/${room}/secrets`), { [role]: val });
+  await update(ref(db, `rooms/${room}/ready`),   { [role]: true });
+
+  txt("secretStatus", "[OK] Angka rahasia tersimpan!");
+  el("secretInput").disabled  = true;
+  el("setSecretBtn").disabled = true;
+
+  const snap  = await get(ref(db, `rooms/${room}/ready`));
+  const ready = snap.val();
+
+  if (ready.player1 && ready.player2) {
+    await update(ref(db, `rooms/${room}`), { gameState: "playing" });
+    await pushLog({ type: "system", msg: " Kedua player siap! Game dimulai! Player 1 jalan duluan " });
+  } else {
+    await pushLog({ type: "system", msg: ` ${myName} sudah set angka rahasia. Menunggu lawan...` });
+  }
+};
+
+/* ── GUESS ── */
+window.guessNumber = async function () {
+  if (gameOver) return;
+
+  const guess = parseInt(el("guessInput").value);
+  if (!guess || guess < 1 || guess > 50) { alert("Angka harus antara 1–50!"); return; }
+
+  const snap = await get(ref(db, `rooms/${room}`));
+  const data = snap.val();
+  if (!data) return;
+
+  if (data.turn !== role)                          { alert("Bukan giliranmu!"); return; }
+  if (!data.ready.player1 || !data.ready.player2) { alert("Semua player belum ready!"); return; }
+
+  const opp      = role === "player1" ? "player2" : "player1";
+  const opSecret = data.secrets[opp];
+  const dispName = data.players[role];
+
+  let hint, hintClass, correct;
+  if (guess === opSecret) {
+    hint      = ` BETUL! Angka rahasia lawan adalah ${opSecret}!`;
+    hintClass = "h-correct";
+    correct   = true;
+  } else if (guess < opSecret) {
+    hint      = "[+] Terlalu kecil! Coba lebih besar";
+    hintClass = "h-higher";
+    correct   = false;
+  } else {
+    hint      = "[-] Terlalu besar! Coba lebih kecil";
+    hintClass = "h-lower";
+    correct   = false;
+  }
+
+  await pushLog({ type: "guess", role, name: dispName, guess, hint, hintClass, correct });
+
+  const newCount = (data.guessCount?.[role] || 0) + 1;
+  await update(ref(db, `rooms/${room}/guessCount`), { [role]: newCount });
+
+  el("guessBtn").disabled   = true;
+  el("guessInput").disabled = true;
+  el("guessInput").value    = "";
+
+  if (correct) {
+    await update(ref(db, `rooms/${room}`), { winner: dispName, winnerRole: role, gameState: "finished" });
+    await pushLog({ type: "system", msg: ` ${dispName} berhasil menebak dalam ${newCount} tebakan!` });
+  } else {
+    const next = role === "player1" ? "player2" : "player1";
+    await update(ref(db, `rooms/${room}`), { turn: next });
+  }
+};
+
+/* ── LISTENER ── */
+function listenRoom() {
+  if (roomListener) return;
+  roomListener = onValue(ref(db, `rooms/${room}`), snap => {
+    const data = snap.val();
+    if (data) updateUI(data);
+  });
+}
+
+/* ── UI UPDATE ── */
+function updateUI(data) {
+  const opp = role === "player1" ? "player2" : "player1";
+
+  txt("myChipName",    data.players[role] || myName);
+  txt("theirChipName", data.players[opp]  || "Menunggu...");
+
+  renderLog(data.log || {});
+
+  const isMyTurn = data.turn === role;
+  const { gameState, winner, ready } = data;
+
+  // Ready status on chips
+  txt("myChipStatus",    ready?.[role] ? "[OK] Siap" : "");
+  txt("theirChipStatus", ready?.[opp]  ? "[OK] Siap" : "");
+
+  const myChip    = el("myChip");
+  const theirChip = el("theirChip");
+
+  if (gameState === "playing" && !winner) {
+    myChip.classList.toggle("active-turn",    isMyTurn);
+    theirChip.classList.toggle("active-turn", !isMyTurn);
+  } else {
+    myChip.classList.remove("active-turn");
+    theirChip.classList.remove("active-turn");
+  }
+
+  switch (gameState) {
+
+    case "waiting":
+      txt("gameStatusBar", " Menunggu lawan bergabung... share room code-nya!");
+      break;
+
+    case "setting": {
+      const p1r = ready?.player1, p2r = ready?.player2;
+      if (p1r && !p2r)      txt("gameStatusBar", " Menunggu lawan set angka rahasia...");
+      else if (!p1r && p2r) txt("gameStatusBar", " Menunggu kamu set angka rahasia...");
+      else                  txt("gameStatusBar", " Set angka rahasiamu!");
+      break;
+    }
+
+    case "playing": {
+      if (secretLocked) {
+        el("secretPanel").style.display = "none";
+        el("guessPanel").style.display  = "flex";
+      }
+      txt("gameStatusBar", isMyTurn
+        ? " Giliran kamu menebak!"
+        : ` Giliran ${data.players[opp]} menebak...`
+      );
+      txt("turnHint", isMyTurn
+        ? " Masukkan tebakanmu!"
+        : ` Tunggu ${data.players[opp]} dulu...`
+      );
+      el("guessBtn").disabled   = !isMyTurn || gameOver;
+      el("guessInput").disabled = !isMyTurn || gameOver;
+      break;
+    }
+
+    case "finished": {
+      gameOver = true;
+      el("guessBtn").disabled   = true;
+      el("guessInput").disabled = true;
+      el("secretPanel").style.display = "none";
+      el("guessPanel").style.display  = "none";
+      myChip.classList.remove("active-turn");
+      theirChip.classList.remove("active-turn");
+
+      const resultPanel = el("resultPanel");
+      if (resultPanel.innerHTML === "") {
+        const myCount   = data.guessCount?.[role] || 0;
+        const oppCount  = data.guessCount?.[opp]  || 0;
+        const iWon      = winner === data.players[role];
+
+        resultPanel.innerHTML = iWon
+          ? `<div class="result-win">
+               <div class="
+               <div class="result-title">Kamu Menang!</div>
+               <div class="result-sub">Berhasil dalam ${myCount} tebakan </div>
+             </div>`
+          : `<div class="result-lose">
+               <div class="
+               <div class="result-title">Kamu Kalah!</div>
+               <div class="result-sub">${winner} menebak benar dalam ${oppCount} tebakan</div>
+             </div>`;
+
+        resultPanel.style.display = "block";
+        txt("gameStatusBar", iWon ? " Kamu yang menang!" : ` ${winner} yang menang!`);
+      }
+      break;
+    }
+  }
+}
+
+/* ── RENDER LOG ── */
+function renderLog(logObj) {
+  const keys = Object.keys(logObj).sort();
+  for (const key of keys) {
+    if (renderedKeys.has(key)) continue;
+    renderedKeys.add(key);
+    const e = logObj[key];
+    if (!e) continue;
+
+    if (e.type === "system") {
+      addSys(e.msg);
+    } else if (e.type === "guess") {
+      addBubble(e.role === role, e.name, e.guess, e.hint, e.hintClass, fmtTime(e.ts));
+    }
+  }
+}
+
+function addSys(msg) {
+  const d = document.createElement("div");
+  d.className = "log-system";
+  d.textContent = msg;
+  el("logArea").appendChild(d);
+  scroll();
+}
+
+function addBubble(isMine, name, guess, hint, hintClass, time) {
+  const w = document.createElement("div");
+  w.className = `log-entry ${isMine ? "mine" : "theirs"}`;
+  w.innerHTML = `
+    <div class="log-name">${name}</div>
+    <div class="log-bubble">
+      <div class="log-guess-label">Tebakan</div>
+      <div class="log-guess-num">${guess}</div>
+      <div class="log-hint ${hintClass}">${hint}</div>
+    </div>
+    <div class="log-time">${time}</div>
+  `;
+  el("logArea").appendChild(w);
+  scroll();
+}
+
+function scroll() {
+  const a = el("logArea");
+  a.scrollTop = a.scrollHeight;
+}
+
+console.log(" Game loaded!");
+</script>
+</body>
+</html>
