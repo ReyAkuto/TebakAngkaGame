@@ -625,35 +625,38 @@ document.addEventListener("keydown", e => {
 
 /* ── RETRY ── */
 window.requestRetry = async function () {
-  el("retryBtn").disabled = true;
-  await update(ref(db, `rooms/${room}/retryVote`), { [role]: true });
+  el("retryBtn").disabled       = true;
   el("retryStatus").textContent = "Menunggu lawan setuju...";
   el("retryStatus").className   = "retry-status waiting-opp";
+  await update(ref(db, `rooms/${room}/retryVote`), { [role]: true });
 };
 
-async function doRetry() {
-  // Reset room state, keep players, clear log
+// Reset all local UI state — called by BOTH players when retry is confirmed
+function resetLocalUI() {
   secretLocked = false;
   gameOver     = false;
   renderedKeys = new Set();
 
-  // Clear log area
-  const logArea = el("logArea");
-  logArea.innerHTML = '<div class="log-system">Babak baru dimulai! Set angka rahasiamu lagi.</div>';
+  el("logArea").innerHTML = '<div class="log-system">Babak baru dimulai! Set angka rahasiamu lagi.</div>';
 
-  // Reset panels
-  el("resultPanel").innerHTML    = "";
-  el("resultPanel").style.display= "none";
-  el("chatPanel").style.display  = "none";
-  el("retryPanel").style.display = "none";
-  el("secretPanel").style.display= "block";
-  el("guessPanel").style.display = "none";
+  el("resultPanel").innerHTML     = "";
+  el("resultPanel").style.display = "none";
+  el("chatPanel").style.display   = "none";
+  el("retryPanel").style.display  = "none";
+  el("secretPanel").style.display = "block";
+  el("guessPanel").style.display  = "none";
 
-  el("secretInput").disabled   = false;
-  el("setSecretBtn").disabled  = false;
-  el("secretInput").value      = "";
-  el("secretStatus").textContent = "";
+  el("secretInput").disabled      = false;
+  el("setSecretBtn").disabled     = false;
+  el("secretInput").value         = "";
+  el("secretStatus").textContent  = "";
+  el("retryBtn").disabled         = false;
+  el("retryStatus").textContent   = "";
+  el("retryStatus").className     = "retry-status";
+}
 
+// Only player1 pushes the Firebase reset to avoid write race condition
+async function doFirebaseRetry() {
   await update(ref(db, `rooms/${room}`), {
     ready:      { player1: false, player2: false },
     secrets:    { player1: 0, player2: 0 },
@@ -711,9 +714,9 @@ function updateUI(data) {
 
     case "setting": {
       const p1r = ready?.player1, p2r = ready?.player2;
-      if (p1r && !p2r)      txt("gameStatusBar", " Menunggu lawan set angka rahasia...");
-      else if (!p1r && p2r) txt("gameStatusBar", " Menunggu kamu set angka rahasia...");
-      else                  txt("gameStatusBar", " Set angka rahasiamu!");
+      if (p1r && !p2r)      txt("gameStatusBar", "Menunggu lawan set angka rahasia...");
+      else if (!p1r && p2r) txt("gameStatusBar", "Menunggu kamu set angka rahasia...");
+      else                  txt("gameStatusBar", "Set angka rahasiamu!");
       break;
     }
 
@@ -737,19 +740,19 @@ function updateUI(data) {
 
     case "finished": {
       gameOver = true;
-      el("guessBtn").disabled   = true;
-      el("guessInput").disabled = true;
+      el("guessBtn").disabled         = true;
+      el("guessInput").disabled       = true;
       el("secretPanel").style.display = "none";
       el("guessPanel").style.display  = "none";
       myChip.classList.remove("active-turn");
       theirChip.classList.remove("active-turn");
 
-      // Show result card once
+      // Show result card once (guard by innerHTML)
       const resultPanel = el("resultPanel");
       if (resultPanel.innerHTML === "") {
-        const myCount = data.guessCount?.[role] || 0;
-        const oppCount= data.guessCount?.[opp]  || 0;
-        const iWon    = winner === data.players[role];
+        const myCount  = data.guessCount?.[role] || 0;
+        const oppCount = data.guessCount?.[opp]  || 0;
+        const iWon     = winner === data.players[role];
 
         resultPanel.innerHTML = iWon
           ? `<div class="result-win">
@@ -762,25 +765,26 @@ function updateUI(data) {
              </div>`;
         resultPanel.style.display = "block";
         txt("gameStatusBar", iWon ? "Kamu yang menang!" : `${winner} yang menang!`);
-
-        // Activate post-game chat & retry
-        el("chatPanel").style.display  = "flex";
-        el("retryPanel").style.display = "block";
-        el("chatInput").focus();
       }
+
+      // Always ensure chat & retry panels are visible in finished state (fix bug: non-winner couldn't interact)
+      el("chatPanel").style.display  = "flex";
+      el("retryPanel").style.display = "block";
 
       // Handle retry votes
       const vote = data.retryVote || {};
       if (vote.player1 && vote.player2) {
-        // Both voted — only player1 does the reset to avoid race condition
-        if (role === "player1") doRetry();
-      } else if (vote[role]) {
+        // Both agreed — BOTH reset local UI, only p1 updates Firebase (fix bug: p2 stuck)
+        resetLocalUI();
+        if (role === "player1") doFirebaseRetry();
+      } else if (vote[role] && !vote[opp]) {
         el("retryBtn").disabled       = true;
         el("retryStatus").textContent = "Menunggu lawan setuju...";
         el("retryStatus").className   = "retry-status waiting-opp";
       } else if (vote[opp] && !vote[role]) {
         el("retryStatus").textContent = `${data.players[opp]} mau main lagi! Klik Main Lagi juga!`;
         el("retryStatus").className   = "retry-status both-ready";
+        el("retryBtn").disabled       = false;
       }
       break;
     }
