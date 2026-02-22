@@ -114,6 +114,24 @@ button:disabled { opacity: 0.3; cursor: not-allowed; }
   max-width: 480px;
   height: 100vh;
   flex-direction: column;
+  background-image: url('https://raw.githubusercontent.com/ReyAkuto/TebakAngkaGame/main/nasya.jpeg');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  position: relative;
+}
+/* overlay gelap biar teks tetap kebaca */
+#gameArea::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(13, 13, 26, 0.70);
+  pointer-events: none;
+  z-index: 0;
+}
+#gameArea > * {
+  position: relative;
+  z-index: 1;
 }
 
 .g-header {
