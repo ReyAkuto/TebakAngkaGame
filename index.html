@@ -306,6 +306,28 @@ button:disabled { opacity: 0.3; cursor: not-allowed; }
 .result-lose .result-emoji { font-size: 36px; }
 .result-lose .result-title { font-size: 18px; font-weight: 700; color: var(--accent); margin: 6px 0; }
 .result-lose .result-sub   { font-size: 13px; color: #cc8899; }
+
+/* result actions */
+.result-actions { display: flex; gap: 8px; margin-top: 12px; }
+.result-actions button { flex: 1; padding: 10px; font-size: 13px; }
+
+/* post-game chat bubbles */
+.log-entry.chat-mine   { align-self: flex-end;   align-items: flex-end; }
+.log-entry.chat-theirs { align-self: flex-start; align-items: flex-start; }
+.chat-mine   .log-bubble { background: #0a2a1a; border: 1px solid #1a5a3a; border-bottom-right-radius: 4px; border-bottom-left-radius: 16px; }
+.chat-theirs .log-bubble { background: #2a1a0a; border: 1px solid #5a3a0a; border-bottom-left-radius: 4px; border-bottom-right-radius: 16px; }
+.log-chat-text { font-size: 14px; color: var(--text); line-height: 1.4; word-break: break-word; }
+
+/* chat input panel */
+#chatPanel { display: none; flex-direction: column; gap: 8px; }
+.chat-row { display: flex; gap: 8px; align-items: center; }
+.chat-row input  { margin: 0; flex: 1; font-size: 14px; padding: 11px 14px; }
+.chat-row button { width: auto; padding: 11px 18px; flex-shrink: 0; font-size: 13px; }
+
+/* retry */
+.retry-status { font-size: 12px; text-align: center; color: var(--muted); min-height: 16px; }
+.retry-status.waiting-opp { color: var(--yellow); }
+.retry-status.both-ready  { color: var(--green); }
 </style>
 </head>
 <body>
@@ -384,6 +406,23 @@ button:disabled { opacity: 0.3; cursor: not-allowed; }
     </div>
 
     <div id="resultPanel"></div>
+
+    <!-- POST GAME CHAT -->
+    <div id="chatPanel">
+      <div class="panel-hint" id="chatHint">Game selesai! Ngobrol dulu yuk</div>
+      <div class="chat-row">
+        <input type="text" id="chatInput" placeholder="Ketik pesan..." maxlength="100">
+        <button class="btn-blue" onclick="sendChat()">Kirim</button>
+      </div>
+    </div>
+
+    <!-- RETRY -->
+    <div id="retryPanel" style="display:none">
+      <div class="result-actions">
+        <button class="btn-green" id="retryBtn" onclick="requestRetry()">Main Lagi</button>
+      </div>
+      <p class="retry-status" id="retryStatus"></p>
+    </div>
 
   </div>
 </div>
@@ -568,6 +607,66 @@ window.guessNumber = async function () {
   }
 };
 
+/* ── SEND CHAT ── */
+window.sendChat = async function () {
+  const input = el("chatInput");
+  const msg = input.value.trim();
+  if (!msg) return;
+  input.value = "";
+  await pushLog({ type: "chat", role, name: myName, msg });
+};
+
+// allow Enter key to send
+document.addEventListener("keydown", e => {
+  if (e.key === "Enter" && el("chatInput") === document.activeElement) {
+    window.sendChat();
+  }
+});
+
+/* ── RETRY ── */
+window.requestRetry = async function () {
+  el("retryBtn").disabled = true;
+  await update(ref(db, `rooms/${room}/retryVote`), { [role]: true });
+  el("retryStatus").textContent = "Menunggu lawan setuju...";
+  el("retryStatus").className   = "retry-status waiting-opp";
+};
+
+async function doRetry() {
+  // Reset room state, keep players, clear log
+  secretLocked = false;
+  gameOver     = false;
+  renderedKeys = new Set();
+
+  // Clear log area
+  const logArea = el("logArea");
+  logArea.innerHTML = '<div class="log-system">Babak baru dimulai! Set angka rahasiamu lagi.</div>';
+
+  // Reset panels
+  el("resultPanel").innerHTML    = "";
+  el("resultPanel").style.display= "none";
+  el("chatPanel").style.display  = "none";
+  el("retryPanel").style.display = "none";
+  el("secretPanel").style.display= "block";
+  el("guessPanel").style.display = "none";
+
+  el("secretInput").disabled   = false;
+  el("setSecretBtn").disabled  = false;
+  el("secretInput").value      = "";
+  el("secretStatus").textContent = "";
+
+  await update(ref(db, `rooms/${room}`), {
+    ready:      { player1: false, player2: false },
+    secrets:    { player1: 0, player2: 0 },
+    guessCount: { player1: 0, player2: 0 },
+    turn:       "player1",
+    winner:     "",
+    winnerRole: "",
+    gameState:  "setting",
+    retryVote:  { player1: false, player2: false },
+    log:        {}
+  });
+}
+
 /* ── LISTENER ── */
 function listenRoom() {
   if (roomListener) return;
@@ -645,26 +744,43 @@ function updateUI(data) {
       myChip.classList.remove("active-turn");
       theirChip.classList.remove("active-turn");
 
+      // Show result card once
       const resultPanel = el("resultPanel");
       if (resultPanel.innerHTML === "") {
-        const myCount   = data.guessCount?.[role] || 0;
-        const oppCount  = data.guessCount?.[opp]  || 0;
-        const iWon      = winner === data.players[role];
+        const myCount = data.guessCount?.[role] || 0;
+        const oppCount= data.guessCount?.[opp]  || 0;
+        const iWon    = winner === data.players[role];
 
         resultPanel.innerHTML = iWon
           ? `<div class="result-win">
-               <div class="
                <div class="result-title">Kamu Menang!</div>
-               <div class="result-sub">Berhasil dalam ${myCount} tebakan </div>
+               <div class="result-sub">Berhasil dalam ${myCount} tebakan</div>
              </div>`
           : `<div class="result-lose">
-               <div class="
                <div class="result-title">Kamu Kalah!</div>
                <div class="result-sub">${winner} menebak benar dalam ${oppCount} tebakan</div>
              </div>`;
-
         resultPanel.style.display = "block";
-        txt("gameStatusBar", iWon ? " Kamu yang menang!" : ` ${winner} yang menang!`);
+        txt("gameStatusBar", iWon ? "Kamu yang menang!" : `${winner} yang menang!`);
+
+        // Activate post-game chat & retry
+        el("chatPanel").style.display  = "flex";
+        el("retryPanel").style.display = "block";
+        el("chatInput").focus();
+      }
+
+      // Handle retry votes
+      const vote = data.retryVote || {};
+      if (vote.player1 && vote.player2) {
+        // Both voted — only player1 does the reset to avoid race condition
+        if (role === "player1") doRetry();
+      } else if (vote[role]) {
+        el("retryBtn").disabled       = true;
+        el("retryStatus").textContent = "Menunggu lawan setuju...";
+        el("retryStatus").className   = "retry-status waiting-opp";
+      } else if (vote[opp] && !vote[role]) {
+        el("retryStatus").textContent = `${data.players[opp]} mau main lagi! Klik Main Lagi juga!`;
+        el("retryStatus").className   = "retry-status both-ready";
       }
       break;
     }
@@ -684,6 +800,8 @@ function renderLog(logObj) {
       addSys(e.msg);
     } else if (e.type === "guess") {
       addBubble(e.role === role, e.name, e.guess, e.hint, e.hintClass, fmtTime(e.ts));
+    } else if (e.type === "chat") {
+      addChat(e.role === role, e.name, e.msg, fmtTime(e.ts));
     }
   }
 }
@@ -705,6 +823,20 @@ function addBubble(isMine, name, guess, hint, hintClass, time) {
       <div class="log-guess-label">Tebakan</div>
       <div class="log-guess-num">${guess}</div>
       <div class="log-hint ${hintClass}">${hint}</div>
+    </div>
+    <div class="log-time">${time}</div>
+  `;
+  el("logArea").appendChild(w);
+  scroll();
+}
+
+function addChat(isMine, name, msg, time) {
+  const w = document.createElement("div");
+  w.className = `log-entry ${isMine ? "chat-mine" : "chat-theirs"}`;
+  w.innerHTML = `
+    <div class="log-name">${name}</div>
+    <div class="log-bubble">
+      <div class="log-chat-text">${msg}</div>
     </div>
     <div class="log-time">${time}</div>
   `;
