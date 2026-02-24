@@ -477,7 +477,7 @@ window.createRoom = async function () {
   myName = el("name").value.trim();
   if (!myName) { alert("Masukkan nama dulu!"); return; }
 
-  room     = Math.floor(10000 + Math.random() * 9000).toString();
+  room     = Math.floor(1000 + Math.random() * 9000).toString();
   role     = "player1";
   gameOver = false;
 
@@ -857,6 +857,7 @@ console.log(" Game loaded!");
 </script>
 </body>
 </html>
+
 
 
 
